@@ -583,10 +583,38 @@ class RemoteAdyenTest < Test::Unit::TestCase
     assert_equal '[cancel-received]', void.message
   end
 
+  def test_successful_void_with_technical_cancel
+    reference = SecureRandom.hex
+    auth = @gateway.authorize(@amount, @credit_card, @options.merge(reference: reference))
+    assert_success auth
+
+    options = { original_merchant_reference: reference }
+    assert void = @gateway.void(nil, options)
+    assert_success void
+    assert_equal '[technical-cancel-received]', void.message
+  end
+
   def test_failed_void
     response = @gateway.void('')
     assert_failure response
     assert_equal 'Original pspReference required for this operation', response.message
+  end
+
+  def test_successful_technical_cancel
+    reference = SecureRandom.hex
+    auth = @gateway.authorize(@amount, @credit_card, @options.merge(order_id: reference))
+    assert_success auth
+
+    options = { original_merchant_reference: reference }
+    assert void = @gateway.technical_cancel(options)
+    assert_success void
+    assert_equal '[technical-cancel-received]', void.message
+  end
+
+  def test_failed_technical_cancel
+    response = @gateway.technical_cancel({})
+    assert_failure response
+    assert_equal 'Reference Missing', response.message
   end
 
   def test_successful_asynchronous_adjust

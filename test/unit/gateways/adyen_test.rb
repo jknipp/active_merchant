@@ -526,10 +526,33 @@ class AdyenTest < Test::Unit::TestCase
     assert response.test?
   end
 
+  def test_successful_void_with_technical_cancel
+    @gateway.expects(:ssl_post).returns(successful_technical_cancel_response)
+    response = @gateway.void(nil, original_merchant_reference: 'original_reference_id')
+    assert_equal '#851578428846081A#', response.authorization
+    assert_equal '[technical-cancel-received]', response.message
+    assert response.test?
+  end
+
   def test_failed_void
     @gateway.expects(:ssl_post).returns(failed_void_response)
     response = @gateway.void('')
     assert_equal 'Original pspReference required for this operation', response.message
+    assert_failure response
+  end
+
+  def test_successful_technical_cancel
+    @gateway.expects(:ssl_post).returns(successful_technical_cancel_response)
+    response = @gateway.technical_cancel(original_merchant_reference: 'original_reference_id')
+    assert_equal '#851578428846081A#', response.authorization
+    assert_equal '[technical-cancel-received]', response.message
+    assert response.test?
+  end
+
+  def test_failed_technical_cancel
+    @gateway.expects(:ssl_post).returns(failed_technical_cancel_response)
+    response = @gateway.technical_cancel({})
+    assert_equal 'Reference Missing', response.message
     assert_failure response
   end
 
@@ -970,6 +993,26 @@ class AdyenTest < Test::Unit::TestCase
       "status":422,
       "errorCode":"167",
       "message":"Original pspReference required for this operation",
+      "errorType":"validation"
+    }
+    RESPONSE
+  end
+
+  def successful_technical_cancel_response
+    <<-RESPONSE
+    {
+      "pspReference": "851578428846081A",
+      "response": "[technical-cancel-received]"
+    }
+    RESPONSE
+  end
+
+  def failed_technical_cancel_response
+    <<-RESPONSE
+    {
+      "status":422,
+      "errorCode":"130",
+      "message":"Reference Missing",
       "errorType":"validation"
     }
     RESPONSE

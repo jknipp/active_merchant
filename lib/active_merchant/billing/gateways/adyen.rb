@@ -80,9 +80,18 @@ module ActiveMerchant #:nodoc:
       end
 
       def void(authorization, options={})
+        return technical_cancel(options) if authorization.blank? && options[:original_merchant_reference]
+
         post = init_post(options)
         add_reference(post, authorization, options)
         commit('cancel', post, options)
+      end
+
+      def technical_cancel(options={})
+        post = init_post(options)
+        # originalMerchantReference is the original transaction's merchant provided reference id, aka the order id
+        post[:originalMerchantReference] = options[:original_merchant_reference]
+        commit('technicalCancel', post, options)
       end
 
       def adjust(money, authorization, options={})
@@ -520,6 +529,8 @@ module ActiveMerchant #:nodoc:
           ['Authorised', 'Received', 'RedirectShopper'].include?(response['resultCode'])
         when 'capture', 'refund', 'cancel'
           response['response'] == "[#{action}-received]"
+        when 'technicalCancel'
+          response['response'] == '[technical-cancel-received]'
         when 'adjustAuthorisation'
           response['response'] == 'Authorised' || response['response'] == '[adjustAuthorisation-received]'
         when 'storeToken'
